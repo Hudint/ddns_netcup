@@ -11,6 +11,8 @@ const textResponse = (statusCode, body) => ({
   body: `${body}\n`
 });
 
+const isIPv6 = (ip) => Boolean(ip && ip.includes(':'));
+
 const parseIp = (value) => {
   if (!value) return null;
   const trimmed = value.trim();
@@ -44,7 +46,7 @@ export const handleUpdate = async (requestLike, config, dnsService, logger) => {
   let ipv4 = parseIp(requestLike.query.myip || null);
   let ipv6 = parseIp(requestLike.query.myipv6 || null);
 
-  if (ipv4 && ipv4.includes(':') && !ipv6) {
+  if (isIPv6(ipv4) && !ipv6) {
     ipv6 = ipv4;
     ipv4 = null;
   }
@@ -52,19 +54,21 @@ export const handleUpdate = async (requestLike, config, dnsService, logger) => {
   if (!ipv4 && !ipv6) {
     const remote = parseIp(extractRemoteAddress(requestLike, config.trustProxy));
     if (remote) {
-      if (remote.includes(':')) ipv6 = remote;
+      if (isIPv6(remote)) ipv6 = remote;
       else ipv4 = remote;
     }
   }
 
   if (!ipv4 && !ipv6) return textResponse(400, 'badip');
-  if (ipv4 && ipv4.includes(':')) return textResponse(400, 'badip');
-  if (ipv6 && !ipv6.includes(':')) return textResponse(400, 'badip');
+  if (isIPv6(ipv4)) return textResponse(400, 'badip');
+  if (ipv6 && !isIPv6(ipv6)) return textResponse(400, 'badip');
 
   try {
     const changed = await dnsService.updateTargets(targets, ipv4, ipv6);
     const ipForResponse = ipv4 || ipv6 || '';
-    return textResponse(200, `${changed ? 'good' : 'nochg'} ${ipForResponse}`.trim());
+    const statusText = changed ? 'good' : 'nochg';
+    logger.info('DDNS update processed', { hostname, status: statusText, ip: ipForResponse });
+    return textResponse(200, `${statusText} ${ipForResponse}`.trim());
   } catch (error) {
     if (error instanceof NetcupAPIError) {
       logger.error('Netcup API error', { hostname, error: error.message });

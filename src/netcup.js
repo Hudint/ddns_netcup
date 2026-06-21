@@ -70,7 +70,7 @@ export class NetcupClient {
 }
 
 const applyRecord = (records, host, type, destination) => {
-  let changed = false;
+  let recordModified = false;
   let matched = false;
 
   for (const record of records) {
@@ -78,7 +78,7 @@ const applyRecord = (records, host, type, destination) => {
       matched = true;
       if (record.destination !== destination) {
         record.destination = destination;
-        changed = true;
+        recordModified = true;
       }
     }
   }
@@ -92,10 +92,10 @@ const applyRecord = (records, host, type, destination) => {
       deleterecord: 'false',
       state: 'yes'
     });
-    changed = true;
+    recordModified = true;
   }
 
-  return changed;
+  return recordModified;
 };
 
 export class NetcupDNSService {

@@ -16,8 +16,8 @@ const makeLogger = () => {
   const calls = [];
   return {
     calls,
-    debug() {},
-    info() {},
+    debug(message, data) { calls.push({ level: 'debug', message, data }); },
+    info(message, data) { calls.push({ level: 'info', message, data }); },
     warn(message, data) { calls.push({ level: 'warn', message, data }); },
     error(message, data) { calls.push({ level: 'error', message, data }); }
   };
@@ -39,6 +39,7 @@ test('rejects bad auth and logs warning', async () => {
 
 test('updates ipv4 and returns good', async () => {
   const calls = [];
+  const logger = makeLogger();
   const response = await handleUpdate(
     {
       query: { hostname: 'sub.example.com', myip: '1.2.3.4' },
@@ -52,12 +53,13 @@ test('updates ipv4 and returns good', async () => {
         return true;
       }
     },
-    makeLogger()
+    logger
   );
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.body, 'good 1.2.3.4\n');
   assert.deepEqual(calls, [{ targets: [{ domain: 'example.com', host: 'sub' }], ipv4: '1.2.3.4', ipv6: null }]);
+  assert.equal(logger.calls.some((entry) => entry.level === 'info' && entry.message === 'DDNS update processed'), true);
 });
 
 test('returns nochg when unchanged', async () => {
