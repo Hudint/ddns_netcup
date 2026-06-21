@@ -1,16 +1,10 @@
-FROM python:3.12-slim
+FROM node:22-alpine
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY ddns_netcup ./ddns_netcup
-COPY main.py ./main.py
+COPY package.json ./
+COPY src ./src
 
 EXPOSE 8000
 
-CMD ["python", "main.py"]
+CMD ["npm", "start"]

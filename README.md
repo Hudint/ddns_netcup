@@ -5,14 +5,14 @@ Self-hosted DynDNS bridge for Netcup, designed for UniFi/UDM Pro or other dyndns
 ## Architecture overview
 
 - DDNS client calls `GET /update` with hostname and IP.
-- Service authenticates the client via HTTP Basic Auth.
-- Hostname is matched against an explicit allowlist mapping.
-- Service logs in to Netcup API server-side and updates only mapped records.
-- Netcup credentials stay only on this server.
+- Service authenticates with HTTP Basic Auth.
+- Hostname is checked against an explicit allowlist mapping.
+- Service updates mapped records via Netcup API (`login` → `infoDnsRecords` → `updateDnsRecords` → `logout`).
+- Netcup credentials remain server-side only.
 
 ## Environment variables
 
-Use `.env.example` as template.
+Use `.env.example` as a template.
 
 Required:
 
@@ -28,17 +28,20 @@ Optional:
 - `BIND_HOST` (default `0.0.0.0`)
 - `BIND_PORT` (default `8000`)
 - `LOG_LEVEL` (default `INFO`)
+- `TRUST_PROXY` (default `false`; only enable behind trusted reverse proxy)
 
-`host` supports `@` (zone apex) and `*` (wildcard).
+Notes:
+
+- Hostname matching is case-insensitive.
+- `host` supports `@` (zone apex) and `*` (wildcard).
+- This bridge is intentionally limited to A/AAAA updates.
 
 ## Running locally
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
+npm install
 export $(grep -v '^#' .env | xargs)
-python main.py
+npm start
 ```
 
 ## Running with Docker
@@ -52,46 +55,44 @@ docker run --rm -p 8000:8000 --env-file .env ddns-netcup
 
 - `GET /update?hostname=sub.example.com&myip=1.2.3.4`
 - Optional IPv6: `myipv6=2001:db8::1`
-- If no IP is provided, remote client IP is used.
+- If no IP is supplied, client remote IP is used.
 
 Auth:
 
-- HTTP Basic Auth with `DDNS_USERNAME` / `DDNS_PASSWORD`
+- HTTP Basic Auth using `DDNS_USERNAME` and `DDNS_PASSWORD`
 
 Responses:
 
 - `good <ip>` → record changed
-- `nochg <ip>` → already up to date
+- `nochg <ip>` → no change needed
 - `badauth` → auth failed
-- `nohost` → hostname missing or not allowed
+- `nohost` → hostname missing or not configured
 - `badip` → invalid IP input
-- `dnserr` → Netcup update failure
+- `dnserr` → Netcup API update failed
 - `911` → unexpected server error
+
+When both IPv4 and IPv6 are provided, response echoes IPv4 first (`myip` precedence).
 
 ## UniFi / UDM Pro usage
 
-Use custom Dynamic DNS provider format:
+Use a custom/inadyn-compatible provider setup:
 
-- Server: this service URL (prefer HTTPS reverse proxy)
-- Path: `/update?hostname=<your-hostname>&myip=%i`
+- URL/path: `/update?hostname=<your-hostname>&myip=%i`
 - Username/password: `DDNS_USERNAME` / `DDNS_PASSWORD`
+- Run this service behind HTTPS (reverse proxy recommended).
 
-If exact UI fields differ by UniFi version, use an inadyn-compatible custom provider flow with the same endpoint/auth pattern.
+Exact UniFi UI labels vary by version; use equivalent custom provider fields.
 
 ## Security notes and limitations
 
-- Run behind HTTPS (reverse proxy like Caddy/Traefik/Nginx) to protect credentials in transit.
-- Keep `NETCUP_*` credentials only in server env vars.
-- Logs are structured JSON and redact sensitive keys.
-- Only configured hostnames are updatable.
-- Netcup API update uses read/modify/write of DNS record sets per mapped domain.
+- Use HTTPS termination (Nginx/Caddy/Traefik) to protect DDNS credentials in transit.
+- Keep `NETCUP_*` credentials only in environment variables on the server.
+- Structured logs redact sensitive keys (e.g. `authorization`, `password`, `apikey`).
+- Only configured hostnames can trigger updates.
+- Netcup API requires read-modify-write of DNS record sets per affected domain.
 
 ## Tests
 
 ```bash
-pytest
+npm test
 ```
-
-## Reference
-
-Netcup update flow was adapted from the Netcup community tooling approach (`login` → `infoDnsRecords` → `updateDnsRecords` → `logout`) while refactoring into a client-facing HTTP bridge.

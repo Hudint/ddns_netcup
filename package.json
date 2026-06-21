@@ -1,0 +1,11 @@
+{
+  "name": "ddns_netcup",
+  "version": "1.0.0",
+  "description": "Self-hosted DDNS bridge for Netcup",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  }
+}
