@@ -32,6 +32,14 @@ export const parseHostMappings = (raw) => {
   return mappings;
 };
 
+const parsePort = (raw) => {
+  const value = Number.parseInt(raw || '8000', 10);
+  if (!Number.isInteger(value) || value < 1 || value > 65535) {
+    throw new Error(`Invalid BIND_PORT value: ${raw}`);
+  }
+  return value;
+};
+
 export const loadConfig = () => ({
   hostMappings: parseHostMappings(required('DDNS_HOST_MAPPINGS')),
   ddnsUsername: required('DDNS_USERNAME'),
@@ -40,7 +48,7 @@ export const loadConfig = () => ({
   netcupApiKey: required('NETCUP_API_KEY'),
   netcupApiPassword: required('NETCUP_API_PASSWORD'),
   bindHost: (process.env.BIND_HOST || '0.0.0.0').trim(),
-  bindPort: Number.parseInt(process.env.BIND_PORT || '8000', 10),
+  bindPort: parsePort(process.env.BIND_PORT),
   logLevel: (process.env.LOG_LEVEL || 'INFO').trim().toUpperCase(),
   trustProxy: (process.env.TRUST_PROXY || 'false').trim().toLowerCase() === 'true'
 });

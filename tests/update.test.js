@@ -12,9 +12,19 @@ const baseConfig = () => ({
   trustProxy: false
 });
 
-const logger = { debug() {}, info() {}, warn() {}, error() {} };
+const makeLogger = () => {
+  const calls = [];
+  return {
+    calls,
+    debug() {},
+    info() {},
+    warn(message, data) { calls.push({ level: 'warn', message, data }); },
+    error(message, data) { calls.push({ level: 'error', message, data }); }
+  };
+};
 
-test('rejects bad auth', async () => {
+test('rejects bad auth and logs warning', async () => {
+  const logger = makeLogger();
   const response = await handleUpdate(
     { query: { hostname: 'sub.example.com', myip: '1.2.3.4' }, headers: {}, remoteAddress: '1.2.3.4' },
     baseConfig(),
@@ -24,6 +34,7 @@ test('rejects bad auth', async () => {
 
   assert.equal(response.statusCode, 401);
   assert.equal(response.body, 'badauth\n');
+  assert.equal(logger.calls[0]?.level, 'warn');
 });
 
 test('updates ipv4 and returns good', async () => {
@@ -41,7 +52,7 @@ test('updates ipv4 and returns good', async () => {
         return true;
       }
     },
-    logger
+    makeLogger()
   );
 
   assert.equal(response.statusCode, 200);
@@ -58,7 +69,7 @@ test('returns nochg when unchanged', async () => {
     },
     baseConfig(),
     { updateTargets: async () => false },
-    logger
+    makeLogger()
   );
 
   assert.equal(response.statusCode, 200);
@@ -80,7 +91,7 @@ test('supports explicit ipv6 updates', async () => {
         return true;
       }
     },
-    logger
+    makeLogger()
   );
 
   assert.equal(response.statusCode, 200);

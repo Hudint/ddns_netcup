@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { isIP } from 'node:net';
 import { URL } from 'node:url';
 
 import { isValidBasicAuth } from './auth.js';
@@ -14,12 +15,8 @@ const parseIp = (value) => {
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(trimmed)) {
-    const parts = trimmed.split('.').map(Number);
-    if (parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) return trimmed;
-    return null;
-  }
-  if (/^[0-9a-fA-F:]+$/.test(trimmed) && trimmed.includes(':')) return trimmed.toLowerCase();
+  const type = isIP(trimmed);
+  if (type === 4 || type === 6) return trimmed.toLowerCase();
   return null;
 };
 
