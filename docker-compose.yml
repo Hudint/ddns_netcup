@@ -1,0 +1,11 @@
+services:
+  ddns-netcup:
+    # Use the prebuilt image from GHCR...
+    image: ghcr.io/hudint/ddns_netcup:latest
+    # ...or build locally instead by commenting out `image:` and uncommenting:
+    # build: .
+    container_name: ddns-netcup
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8080:8080"
